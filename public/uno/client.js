@@ -25,6 +25,8 @@ socket.on('updateOnlineUsers', (count) => {
   document.getElementById('onlineUsers').innerText = `在线玩家：${count}`;
 });
 
+// 更新在线用户列表（如果需要，可以添加对应的 HTML 和处理逻辑）
+
 // 创建房间
 document.getElementById('createRoom').addEventListener('click', () => {
   socket.emit('createRoom', 'uno', {}, (id) => {
@@ -98,6 +100,21 @@ socket.on('receivePlayerList', (data) => {
   }
 });
 
+// 添加对 updatePlayerList 事件的监听
+socket.on('updatePlayerList', (data) => {
+  players = data.players;
+  currentRoomOwner = data.roomOwner;
+  updatePlayerList();
+  document.getElementById('playerCount').innerText = `玩家人数：${Object.keys(players).length}`;
+
+  // 根据房主身份显示或隐藏“开始游戏”按钮
+  if (roomId && currentRoomOwner === socket.id) {
+    document.getElementById('startGameContainer').style.display = 'block';
+  } else {
+    document.getElementById('startGameContainer').style.display = 'none';
+  }
+});
+
 function updatePlayerList() {
   const playersUl = document.getElementById('players');
   playersUl.innerHTML = '';
@@ -108,6 +125,18 @@ function updatePlayerList() {
     playersUl.appendChild(li);
   }
 }
+
+// 监听玩家离开事件
+socket.on('playerLeft', (playerName) => {
+  alert(`玩家 ${playerName} 离开了房间`);
+});
+
+// 监听玩家不足事件
+socket.on('notEnoughPlayers', () => {
+  alert('玩家不足，游戏结束');
+  // 重置客户端状态
+  resetClientState();
+});
 
 // 开始游戏
 document.getElementById('startGame').addEventListener('click', () => {
@@ -198,7 +227,17 @@ function updateGameState() {
   document.getElementById('gameStatus').innerText = `当前颜色：${gameState.currentColor}，当前值：${gameState.currentValue}`;
   // 更新弃牌堆顶牌
   const topCardDiv = document.getElementById('topCard');
-  topCardDiv.innerText = `${gameState.topCard.color || '黑色'} ${gameState.topCard.value}`;
+  topCardDiv.innerHTML = '';
+  const cardDiv = document.createElement('div');
+  cardDiv.classList.add('card');
+  cardDiv.classList.add(gameState.topCard.color || 'black');
+
+  const valueDiv = document.createElement('div');
+  valueDiv.innerText = gameState.topCard.value;
+  cardDiv.appendChild(valueDiv);
+
+  topCardDiv.appendChild(cardDiv);
+
   // 更新手牌和当前玩家指示
   if (gameState.currentPlayerId === socket.id) {
     document.getElementById('gameStatus').innerText += '\n轮到你了！';
@@ -220,9 +259,13 @@ function updateHandCardsDisplay() {
   playerHand.forEach((card, index) => {
     const cardDiv = document.createElement('div');
     cardDiv.classList.add('card');
-    cardDiv.style.backgroundColor = card.color || 'black';
-    cardDiv.innerText = `${card.value}`;
+    cardDiv.classList.add(card.color || 'black');
     cardDiv.dataset.index = index;
+
+    const valueDiv = document.createElement('div');
+    valueDiv.innerText = card.value;
+    cardDiv.appendChild(valueDiv);
+
     handCardsDiv.appendChild(cardDiv);
   });
   // 如果是玩家的回合，启用手牌点击事件

@@ -17,23 +17,52 @@ body {
   margin-top: 20px;
 }
 
+#handCardsArea {
+  margin-top: 20px;
+}
+
 #handCards {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  grid-gap: 10px;
+  justify-items: center;
 }
 
 .card {
   width: 60px;
   height: 90px;
   margin: 5px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
+  border: 2px solid #fff;
+  border-radius: 10px;
   cursor: pointer;
   color: #fff;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.card.red {
+  background-color: #e74c3c;
+}
+
+.card.yellow {
+  background-color: #f1c40f;
+  color: #000;
+}
+
+.card.green {
+  background-color: #2ecc71;
+}
+
+.card.blue {
+  background-color: #3498db;
+}
+
+.card.black {
+  background-color: #34495e;
 }
 
 #gameStatus {
@@ -63,5 +92,3 @@ body {
 #sendChat {
   padding: 5px 10px;
 }
-
-/* 其他样式 */

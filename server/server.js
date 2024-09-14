@@ -96,7 +96,6 @@ io.on('connection', (socket) => {
             rooms[roomId].round = 1;
         } else if (gameType === 'uno') {
             rooms[roomId].unoGame = unoGameLogic.createGame();
-            unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
         }
         socket.join(roomId);
         rooms[roomId].players[socket.id] = playerName;
@@ -194,7 +193,6 @@ io.on('connection', (socket) => {
                 rooms[roomId].round = 1;
             } else if (gameType === 'uno') {
                 rooms[roomId].unoGame = unoGameLogic.createGame();
-                unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
             }
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
@@ -297,12 +295,19 @@ io.on('connection', (socket) => {
                 }
                 io.emit('updateRoomList', roomList);
 
+                // 向房间内所有玩家发送玩家离开的通知
                 io.to(roomId).emit('playerLeft', playerName);
+
+                // 如果房间内的玩家人数少于 2 人，发送 notEnoughPlayers 事件
+                if (rooms[roomId] && Object.keys(rooms[roomId].players).length < 2) {
+                    io.to(roomId).emit('notEnoughPlayers');
+                }
+
+                // 向房间内所有玩家发送更新的玩家列表
                 io.to(roomId).emit('updatePlayerList', {
                     players: rooms[roomId]?.players || {},
                     roomOwner: rooms[roomId]?.roomOwner || null,
                 });
-                io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
             }
         }
     });
@@ -377,8 +382,8 @@ function handleUnoGameEvents(socket) {
         if (rooms[roomId] && rooms[roomId].gameType === 'uno') {
             const game = rooms[roomId].unoGame;
             const playerId = socket.id;
-            const card = unoGameLogic.drawCard(game, playerId);
-            if (card) {
+            const result = unoGameLogic.drawCard(game, playerId);
+            if (result.success) {
                 // 更新手牌并发送给玩家
                 const hand = game.players[playerId];
                 socket.emit('updateHandCards', hand);
@@ -387,7 +392,7 @@ function handleUnoGameEvents(socket) {
                 const gameState = unoGameLogic.getGameState(game);
                 io.to(roomId).emit('unoGameStateUpdated', { gameState });
             } else {
-                socket.emit('errorMessage', '无法抽牌');
+                socket.emit('errorMessage', result.message);
             }
         }
     });

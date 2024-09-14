@@ -154,6 +154,38 @@ function handleCardAction(game, card, playerId) {
 }
 
 function drawCard(game, playerId) {
+    if (game.playerOrder[game.currentPlayerIndex] !== playerId) {
+        return { success: false, message: '还未轮到你' };
+    }
+
+    if (game.deck.length === 0) {
+        // 如果牌堆为空，重新洗牌
+        if (game.discardPile.length > 1) {
+            const lastCard = game.discardPile.pop();
+            game.deck = game.discardPile;
+            game.discardPile = [lastCard];
+            shuffle(game.deck);
+        } else {
+            // 无法抽牌
+            return { success: false, message: '无法抽牌' };
+        }
+    }
+    const card = game.deck.pop();
+    game.players[playerId].push(card);
+
+    // 抽牌后，直接结束回合，轮到下一位玩家
+    moveToNextPlayer(game);
+
+    return { success: true, card };
+}
+
+function drawCards(game, playerId, count) {
+    for (let i = 0; i < count; i++) {
+        drawCardWithoutTurnChange(game, playerId);
+    }
+}
+
+function drawCardWithoutTurnChange(game, playerId) {
     if (game.deck.length === 0) {
         // 如果牌堆为空，重新洗牌
         if (game.discardPile.length > 1) {
@@ -169,12 +201,6 @@ function drawCard(game, playerId) {
     const card = game.deck.pop();
     game.players[playerId].push(card);
     return card;
-}
-
-function drawCards(game, playerId, count) {
-    for (let i = 0; i < count; i++) {
-        drawCard(game, playerId);
-    }
 }
 
 function moveToNextPlayer(game) {
