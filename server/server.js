@@ -4,22 +4,31 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-
 const gameLogic = require('./gameLogic');
-
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+
+// 使用 CORS 中间件
+app.use(cors());
 
 // 设置静态文件目录
 app.use(express.static(path.join(__dirname, '../public')));
+
 // 如果路由不匹配，返回 index.html
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// 初始化 Socket.IO
+const io = socketIo(server, {
+    cors: {
+        origin: '*', // 或者指定您的客户端 URL
+        methods: ['GET', 'POST']
+    }
+});
 
 // 存储房间信息
 const rooms = {};
@@ -51,6 +60,8 @@ let onlineUsers = 0;
 io.on('connection', (socket) => {
     onlineUsers++;
     io.emit('updateOnlineUsers', onlineUsers);
+
+    console.log(`新用户连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
     let playerName = socket.id.substr(0, 5);
 
@@ -87,6 +98,8 @@ io.on('connection', (socket) => {
             rooms[roomId].players[socket.id] = playerName;
             rooms[roomId].scores[socket.id] = 0;
             callback(true, rooms[roomId].settings);
+
+            // 向房间内所有玩家广播更新后的玩家列表和状态
             io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         } else {
@@ -254,6 +267,7 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         onlineUsers--;
         io.emit('updateOnlineUsers', onlineUsers);
+        console.log(`用户断开连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
         for (const roomId in rooms) {
             if (rooms[roomId].players[socket.id]) {
@@ -284,9 +298,13 @@ io.on('connection', (socket) => {
     });
 });
 
-// 生成随机房间 ID
+// 生成随机房间 ID（6位数字）
 function generateRoomId() {
-    return Math.random().toString(36).substring(2, 8);
+    let roomId;
+    do {
+        roomId = Math.floor(100000 + Math.random() * 900000).toString();
+    } while (rooms[roomId]);
+    return roomId;
 }
 
 // 默认游戏设置
@@ -319,4 +337,3 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`服务器正在运行，端口：${PORT}`);
 });
-

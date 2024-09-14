@@ -44,6 +44,7 @@ document.getElementById('confirmSettings').addEventListener('click', () => {
         document.getElementById('gameSettings').style.display = 'none';
         document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
         document.getElementById('playerActions').style.display = 'none';
+        document.getElementById('startGame').style.display = 'block'; // 显示“开始游戏”按钮
     });
 });
 
@@ -63,6 +64,7 @@ document.getElementById('joinRoom').addEventListener('click', () => {
             document.getElementById('gameSettings').style.display = 'none';
             document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
             disableRoomButtons();
+            document.getElementById('status').innerText = '等待房主开始游戏...';
         } else {
             alert('加入房间失败，房间不存在');
         }
@@ -79,6 +81,7 @@ document.getElementById('quickMatch').addEventListener('click', () => {
         document.getElementById('gameSettings').style.display = 'none';
         document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
         disableRoomButtons();
+        document.getElementById('status').innerText = '等待房主开始游戏...';
     });
 });
 
@@ -114,6 +117,7 @@ document.getElementById('choices').addEventListener('click', (e) => {
 // 更新玩家列表
 socket.on('updatePlayerList', (data) => {
     players = data;
+    console.log('更新的玩家列表：', data);
     updatePlayerStatusDisplay(); // 更新玩家列表显示
     document.getElementById('playerCount').innerText = `玩家人数：${Object.keys(players).length}`;
 });
@@ -141,6 +145,7 @@ socket.on('gameStarted', (settings) => {
     enableChoiceButtons();
     applyGameSettings(settings);
     document.getElementById('choices').style.display = 'block'; // 显示选择按钮
+    document.getElementById('startGame').style.display = 'none'; // 隐藏“开始游戏”按钮
 });
 
 // 本轮结果

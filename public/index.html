@@ -43,13 +43,23 @@
 <div id="playerActions" style="display: none;">
     <button id="confirmSettings">创建房间并开始游戏</button>
 </div>
+<button id="startGame" style="display: none;">开始游戏</button>
 <div id="status"></div>
 <div id="choices" style="display: none;">
     <button data-choice="rock">石头</button>
     <button data-choice="paper">布</button>
     <button data-choice="scissors">剪刀</button>
 </div>
-<!-- 聊天和排行榜部分保持不变 -->
+<div id="chat">
+    <h3>聊天</h3>
+    <div id="messages"></div>
+    <input type="text" id="chatInput" placeholder="输入消息" />
+    <button id="sendChat">发送</button>
+</div>
+<div id="leaderboardSection">
+    <h3>排行榜</h3>
+    <ul id="leaderboard"></ul>
+</div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
 </body>
