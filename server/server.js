@@ -217,8 +217,6 @@ io.on('connection', (socket) => {
                             winner: winners.join(', '),
                             scores: rooms[roomId].scores,
                         });
-                    } else {
-                        rooms[roomId].round += 1;
                     }
                 }
 
@@ -232,6 +230,11 @@ io.on('connection', (socket) => {
                 });
 
                 if (!gameEnded) {
+                    // 增加当前回合数（在回合数模式下）
+                    if (rooms[roomId].settings.victoryCondition === 'rounds') {
+                        rooms[roomId].round += 1;
+                    }
+
                     // 清除本轮选择
                     rooms[roomId].choices = {};
                     // 重置玩家状态为“思考中”
@@ -239,8 +242,9 @@ io.on('connection', (socket) => {
                     playerIds.forEach((id) => {
                         rooms[roomId].status[id] = '思考中';
                     });
-                    // 通知客户端更新状态
+                    // 通知客户端更新状态和当前回合数
                     io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+                    io.to(roomId).emit('updateRound', rooms[roomId].round);
                 } else {
                     // 删除房间
                     delete rooms[roomId];
@@ -248,6 +252,37 @@ io.on('connection', (socket) => {
                     if (index !== -1) {
                         availableRooms.splice(index, 1);
                     }
+                }
+            }
+        }
+    });
+
+    // 玩家离开房间
+    socket.on('leaveRoom', (roomId) => {
+        if (rooms[roomId]) {
+            socket.leave(roomId);
+            const playerName = rooms[roomId].players[socket.id];
+            delete rooms[roomId].players[socket.id];
+            delete rooms[roomId].scores[socket.id];
+            delete rooms[roomId].choices[socket.id];
+            delete rooms[roomId].status[socket.id];
+
+            // 更新房间状态
+            io.to(roomId).emit('playerLeft', playerName);
+            io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+            io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+
+            // 如果房间没人了，删除房间
+            if (Object.keys(rooms[roomId].players).length === 0) {
+                delete rooms[roomId];
+                const index = availableRooms.indexOf(roomId);
+                if (index !== -1) {
+                    availableRooms.splice(index, 1);
+                }
+            } else {
+                // 如果房间人数低于4人，重新添加到可用房间列表
+                if (!availableRooms.includes(roomId)) {
+                    availableRooms.push(roomId);
                 }
             }
         }
@@ -271,6 +306,7 @@ io.on('connection', (socket) => {
 
         for (const roomId in rooms) {
             if (rooms[roomId].players[socket.id]) {
+                const playerName = rooms[roomId].players[socket.id];
                 delete rooms[roomId].players[socket.id];
                 delete rooms[roomId].scores[socket.id];
                 delete rooms[roomId].choices[socket.id];

@@ -43,13 +43,17 @@
 <div id="playerActions" style="display: none;">
     <button id="confirmSettings">创建房间并开始游戏</button>
 </div>
-<button id="startGame" style="display: none;">开始游戏</button>
+<div id="startGameContainer" style="display: none;">
+    <button id="startGame">开始游戏</button>
+</div>
+<div id="currentRound" style="display: none;">当前回合：1</div>
 <div id="status"></div>
 <div id="choices" style="display: none;">
     <button data-choice="rock">石头</button>
     <button data-choice="paper">布</button>
     <button data-choice="scissors">剪刀</button>
 </div>
+<button id="leaveRoom" style="display: none;">退出游戏</button>
 <div id="chat">
     <h3>聊天</h3>
     <div id="messages"></div>

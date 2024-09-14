@@ -44,7 +44,8 @@ document.getElementById('confirmSettings').addEventListener('click', () => {
         document.getElementById('gameSettings').style.display = 'none';
         document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
         document.getElementById('playerActions').style.display = 'none';
-        document.getElementById('startGame').style.display = 'block'; // 显示“开始游戏”按钮
+        document.getElementById('startGameContainer').style.display = 'block'; // 显示“开始游戏”按钮
+        document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
     });
 });
 
@@ -65,6 +66,7 @@ document.getElementById('joinRoom').addEventListener('click', () => {
             document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
             disableRoomButtons();
             document.getElementById('status').innerText = '等待房主开始游戏...';
+            document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
         } else {
             alert('加入房间失败，房间不存在');
         }
@@ -82,6 +84,7 @@ document.getElementById('quickMatch').addEventListener('click', () => {
         document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
         disableRoomButtons();
         document.getElementById('status').innerText = '等待房主开始游戏...';
+        document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
     });
 });
 
@@ -114,6 +117,35 @@ document.getElementById('choices').addEventListener('click', (e) => {
     }
 });
 
+// 退出游戏
+document.getElementById('leaveRoom').addEventListener('click', () => {
+    if (roomId) {
+        socket.emit('leaveRoom', roomId);
+        // 重置客户端状态
+        resetClientState();
+    }
+});
+
+function resetClientState() {
+    roomId = null;
+    players = {};
+    hasMadeChoice = false;
+    document.getElementById('roomId').innerText = '';
+    document.getElementById('playerCount').innerText = '';
+    document.getElementById('status').innerText = '';
+    document.getElementById('choices').style.display = 'none';
+    document.getElementById('startGameContainer').style.display = 'none';
+    document.getElementById('leaveRoom').style.display = 'none';
+    document.getElementById('currentRound').style.display = 'none';
+    enableRoomButtons();
+}
+
+function enableRoomButtons() {
+    document.getElementById('createRoom').disabled = false;
+    document.getElementById('joinRoom').disabled = false;
+    document.getElementById('quickMatch').disabled = false;
+}
+
 // 更新玩家列表
 socket.on('updatePlayerList', (data) => {
     players = data;
@@ -145,7 +177,13 @@ socket.on('gameStarted', (settings) => {
     enableChoiceButtons();
     applyGameSettings(settings);
     document.getElementById('choices').style.display = 'block'; // 显示选择按钮
-    document.getElementById('startGame').style.display = 'none'; // 隐藏“开始游戏”按钮
+    document.getElementById('startGameContainer').style.display = 'none'; // 隐藏“开始游戏”按钮
+    document.getElementById('currentRound').style.display = 'block'; // 显示当前回合数
+});
+
+// 更新当前回合数
+socket.on('updateRound', (round) => {
+    document.getElementById('currentRound').innerText = `当前回合：${round}`;
 });
 
 // 本轮结果
@@ -179,6 +217,7 @@ socket.on('gameEnded', (data) => {
     }
     document.getElementById('status').innerText = resultText;
     document.getElementById('choices').style.display = 'none';
+    document.getElementById('currentRound').style.display = 'none'; // 隐藏当前回合数
     fetch('/leaderboard')
         .then((response) => response.json())
         .then((data) => {
@@ -269,6 +308,8 @@ function applyGameSettings(settings) {
         document.getElementById('targetScoreLabel').style.display = 'none';
         document.getElementById('totalRoundsLabel').style.display = 'block';
     }
+    // 初始化当前回合数
+    document.getElementById('currentRound').innerText = `当前回合：1`;
 }
 
 document.getElementById('victoryCondition').addEventListener('change', (e) => {
