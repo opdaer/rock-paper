@@ -76,6 +76,11 @@ function shuffle(deck) {
 }
 
 function playCard(game, playerId, card, chosenColor = null) {
+    // 检查是否是当前玩家的回合
+    if (game.playerOrder[game.currentPlayerIndex] !== playerId) {
+        return { success: false, message: '还未轮到你' };
+    }
+
     const playerHand = game.players[playerId];
     const handCardIndex = playerHand.findIndex(
         (c) =>
@@ -149,20 +154,19 @@ function handleCardAction(game, card, playerId) {
 }
 
 function drawCard(game, playerId) {
-    const card = game.deck.pop();
-    if (!card) {
+    if (game.deck.length === 0) {
         // 如果牌堆为空，重新洗牌
         if (game.discardPile.length > 1) {
             const lastCard = game.discardPile.pop();
             game.deck = game.discardPile;
             game.discardPile = [lastCard];
             shuffle(game.deck);
-            return drawCard(game, playerId);
         } else {
             // 无法抽牌
             return null;
         }
     }
+    const card = game.deck.pop();
     game.players[playerId].push(card);
     return card;
 }

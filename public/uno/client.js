@@ -8,9 +8,15 @@ let currentRoomOwner = null;
 let gameState = null;
 let playerHand = [];
 
-let playerName = prompt('请输入你的昵称：');
+// 尝试从localStorage中获取用户名
+let playerName = localStorage.getItem('playerName');
 if (!playerName || playerName.trim() === '') {
-  playerName = '玩家' + Math.floor(Math.random() * 1000);
+  playerName = prompt('请输入你的昵称：');
+  if (!playerName || playerName.trim() === '') {
+    playerName = '玩家' + Math.floor(Math.random() * 1000);
+  }
+  // 将用户名存储到localStorage
+  localStorage.setItem('playerName', playerName);
 }
 socket.emit('setPlayerName', playerName);
 
@@ -117,12 +123,19 @@ socket.on('unoGameStarted', (settings) => {
   document.getElementById('gameArea').style.display = 'block';
   document.getElementById('startGameContainer').style.display = 'none';
   document.getElementById('status').innerText = '游戏已开始！';
-});
 
-// UNO 游戏状态更新
-socket.on('unoGameStateUpdated', (data) => {
-  gameState = data.gameState;
-  updateGameState();
+  // 清空手牌显示
+  playerHand = [];
+  updateHandCardsDisplay();
+
+  // 清空游戏状态显示
+  document.getElementById('gameStatus').innerText = '';
+
+  // 清空弃牌堆顶牌显示
+  document.getElementById('topCard').innerText = '';
+
+  // 启用抽牌按钮
+  document.getElementById('drawCard').disabled = false;
 });
 
 // 接收自己的手牌
@@ -131,24 +144,14 @@ socket.on('updateHandCards', (hand) => {
   updateHandCardsDisplay();
 });
 
-// UNO 有玩家出牌
-socket.on('unoCardPlayed', (data) => {
+// UNO 游戏状态更新
+socket.on('unoGameStateUpdated', (data) => {
   gameState = data.gameState;
   updateGameState();
-  // 显示哪个玩家出了什么牌
-  // 如果是自己，手牌需要更新
-  if (data.playerId === socket.id) {
-    playerHand = data.hand;
-    updateHandCardsDisplay();
-  }
 });
 
-// UNO 有玩家抽牌
-socket.on('unoCardDrawn', (data) => {
-  if (data.playerId === socket.id) {
-    playerHand.push(data.card);
-    updateHandCardsDisplay();
-  }
+// UNO 有玩家出牌
+socket.on('unoCardPlayed', (data) => {
   gameState = data.gameState;
   updateGameState();
 });
@@ -170,6 +173,25 @@ document.getElementById('restartGame').addEventListener('click', () => {
   }
 });
 
+// UNO 游戏重新开始
+socket.on('unoGameRestarted', (data) => {
+  gameState = data.gameState;
+  updateGameState();
+
+  // 清空手牌显示
+  playerHand = [];
+  updateHandCardsDisplay();
+
+  // 清空游戏状态显示
+  document.getElementById('gameStatus').innerText = '';
+
+  // 清空弃牌堆顶牌显示
+  document.getElementById('topCard').innerText = '';
+
+  // 启用抽牌按钮
+  document.getElementById('drawCard').disabled = false;
+});
+
 // 更新游戏状态
 function updateGameState() {
   // 更新界面上的游戏状态
@@ -180,12 +202,14 @@ function updateGameState() {
   // 更新手牌和当前玩家指示
   if (gameState.currentPlayerId === socket.id) {
     document.getElementById('gameStatus').innerText += '\n轮到你了！';
-    // 启用手牌点击事件
+    // 启用手牌点击事件和抽牌按钮
     enableHandCards();
+    document.getElementById('drawCard').disabled = false;
   } else {
     document.getElementById('gameStatus').innerText += `\n等待玩家 ${players[gameState.currentPlayerId]} 出牌...`;
-    // 禁用手牌点击事件
+    // 禁用手牌点击事件和抽牌按钮
     disableHandCards();
+    document.getElementById('drawCard').disabled = true;
   }
 }
 
@@ -199,9 +223,14 @@ function updateHandCardsDisplay() {
     cardDiv.style.backgroundColor = card.color || 'black';
     cardDiv.innerText = `${card.value}`;
     cardDiv.dataset.index = index;
-    cardDiv.addEventListener('click', onCardClick);
     handCardsDiv.appendChild(cardDiv);
   });
+  // 如果是玩家的回合，启用手牌点击事件
+  if (gameState && gameState.currentPlayerId === socket.id) {
+    enableHandCards();
+  } else {
+    disableHandCards();
+  }
 }
 
 // 点击手牌出牌
@@ -293,4 +322,18 @@ socket.on('receiveMessage', (data) => {
   messageP.textContent = `${player}: ${message}`;
   messagesDiv.appendChild(messageP);
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
+});
+
+// 显示错误信息
+socket.on('errorMessage', (message) => {
+  alert(message);
+});
+
+// 添加主页按钮的点击事件
+document.getElementById('homeButton').addEventListener('click', () => {
+  if (roomId) {
+    socket.emit('leaveRoom', roomId);
+  }
+  // 跳转到主页
+  window.location.href = '/';
 });

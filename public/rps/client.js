@@ -9,10 +9,18 @@ let hasMadeChoice = false;
 let players = {};
 let currentRoomOwner = null;
 
+// 在客户端添加一个数组来存储所有回合的结果
+let allRoundResults = [];
+
 // 设置玩家昵称
-let playerName = prompt('请输入你的昵称：');
+let playerName = localStorage.getItem('playerName');
 if (!playerName || playerName.trim() === '') {
-    playerName = '玩家' + Math.floor(Math.random() * 1000);
+    playerName = prompt('请输入你的昵称：');
+    if (!playerName || playerName.trim() === '') {
+        playerName = '玩家' + Math.floor(Math.random() * 1000);
+    }
+    // 将用户名存储到localStorage
+    localStorage.setItem('playerName', playerName);
 }
 socket.emit('setPlayerName', playerName);
 
@@ -236,14 +244,26 @@ document.getElementById('restartGame').addEventListener('click', () => {
     }
 });
 
+// 添加主页按钮的点击事件
+document.getElementById('homeButton').addEventListener('click', () => {
+    // 在离开房间前，需要通知服务器
+    if (roomId) {
+        socket.emit('leaveRoom', roomId);
+    }
+    // 跳转到主页
+    window.location.href = '/';
+});
+
 function resetClientState() {
     roomId = null;
     players = {};
     hasMadeChoice = false;
     currentRoomOwner = null;
+    allRoundResults = []; // 重置所有回合结果数组
     document.getElementById('roomId').innerText = '';
     document.getElementById('playerCount').innerText = '';
     document.getElementById('status').innerText = '';
+    document.getElementById('scores').innerText = '';
     document.getElementById('choices').style.display = 'none';
     document.getElementById('startGameContainer').style.display = 'none';
     document.getElementById('leaveRoom').style.display = 'none';
@@ -283,7 +303,7 @@ function updatePlayerStatusDisplay(status = {}) {
     const playersUl = document.getElementById('players');
     playersUl.innerHTML = ''; // 清空列表
     for (const [id, name] of Object.entries(players)) {
-        const playerStatus = status[id] || '思考中';
+        const playerStatus = status[id] || '等待中';
         const isOwner = id === currentRoomOwner;
         const li = document.createElement('li');
         li.textContent = `${name}${isOwner ? ' (房主)' : ''} - ${playerStatus}`;
@@ -294,6 +314,8 @@ function updatePlayerStatusDisplay(status = {}) {
 // 游戏开始
 socket.on('gameStarted', (settings) => {
     document.getElementById('status').innerText = '游戏已开始，请选择：';
+    document.getElementById('scores').innerText = ''; // 清空分数显示
+    allRoundResults = []; // 重置所有回合结果数组
     hasMadeChoice = false;
     enableChoiceButtons();
     applyGameSettings(settings);
@@ -314,17 +336,26 @@ socket.on('roundResult', (data) => {
     for (const [playerId, choice] of Object.entries(choices)) {
         resultText += `${players[playerId]}: ${translateChoice(choice)}\n`;
     }
-    resultText += '\n当前分数：\n';
-    for (const [playerId, score] of Object.entries(scores)) {
-        resultText += `${players[playerId]}: ${score}\n`;
-    }
     if (winners.length > 0) {
         const winnerNames = winners.map((id) => players[id]);
-        resultText += `\n本轮获胜者：${winnerNames.join(', ')}`;
+        resultText += `本轮获胜者：${winnerNames.join(', ')}`;
     } else {
-        resultText += '\n本轮平局';
+        resultText += '本轮平局';
     }
-    document.getElementById('status').innerText = resultText;
+
+    // 将本轮结果添加到 allRoundResults 数组
+    allRoundResults.push(resultText);
+
+    // 更新显示，显示所有回合的结果
+    document.getElementById('status').innerText = allRoundResults.join('\n\n');
+
+    // 更新分数显示
+    let scoreText = '\n当前分数：\n';
+    for (const [playerId, score] of Object.entries(scores)) {
+        scoreText += `${players[playerId]}: ${score}\n`;
+    }
+    document.getElementById('scores').innerText = scoreText;
+
     hasMadeChoice = false;
     enableChoiceButtons();
 });
@@ -332,18 +363,30 @@ socket.on('roundResult', (data) => {
 // 游戏结束
 socket.on('gameEnded', (data) => {
     const { winner, scores } = data;
-    let resultText = `游戏结束！\n获胜者：${winner}\n最终分数：\n`;
+    let resultText = '游戏结束！\n';
+    resultText += `获胜者：${winner}\n`;
+
+    // 显示所有回合的结果
+    resultText += '\n所有回合的结果：\n';
+    resultText += allRoundResults.join('\n\n');
+
+    // 显示最终分数
+    let scoreText = '\n最终分数：\n';
     for (const [playerId, score] of Object.entries(scores)) {
-        resultText += `${players[playerId]}: ${score}\n`;
+        scoreText += `${players[playerId]}: ${score}\n`;
     }
+    document.getElementById('scores').innerText = scoreText;
+
     document.getElementById('status').innerText = resultText;
     document.getElementById('choices').style.display = 'none';
     document.getElementById('currentRound').style.display = 'none'; // 隐藏当前回合数
+
     fetch('/leaderboard')
         .then((response) => response.json())
         .then((data) => {
             updateLeaderboard(data);
         });
+
     // 显示“重新开始”按钮（如果是房主）
     if (currentRoomOwner === socket.id) {
         document.getElementById('restartGame').style.display = 'block';
@@ -353,6 +396,8 @@ socket.on('gameEnded', (data) => {
 // 游戏重新开始
 socket.on('gameRestarted', (settings) => {
     document.getElementById('status').innerText = '游戏已重新开始，请选择：';
+    document.getElementById('scores').innerText = ''; // 清空分数显示
+    allRoundResults = []; // 重置所有回合结果数组
     hasMadeChoice = false;
     enableChoiceButtons();
     applyGameSettings(settings);
