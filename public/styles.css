@@ -1,0 +1,97 @@
+/* public/styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 20px;
+}
+
+#choices button {
+    margin: 5px;
+    padding: 10px 20px;
+    font-size: 16px;
+}
+
+#status {
+    margin-top: 20px;
+    white-space: pre-wrap;
+    text-align: left;
+    display: inline-block;
+    max-width: 400px;
+}
+
+#roomId {
+    margin-top: 10px;
+}
+
+#playerActions {
+    margin-top: 20px;
+}
+
+#playerList {
+    margin-top: 20px;
+}
+
+#playerList ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+#playerList li {
+    margin: 5px 0;
+}
+
+#playerCount {
+    margin-top: 10px;
+}
+
+#chat {
+    margin-top: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+}
+
+#messages {
+    border: 1px solid #ccc;
+    height: 150px;
+    overflow-y: scroll;
+    padding: 5px;
+}
+
+#chatInput {
+    width: 80%;
+    padding: 5px;
+}
+
+#sendChat {
+    padding: 5px 10px;
+}
+
+#leaderboardSection {
+    margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+    body {
+        margin-top: 10px;
+    }
+
+    #choices button {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+
+    #status {
+        max-width: 100%;
+    }
+
+    #chatInput {
+        width: 70%;
+    }
+
+    #sendChat {
+        padding: 5px;
+    }
+}

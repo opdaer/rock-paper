@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>石头剪刀布游戏</title>
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+<h1>石头剪刀布游戏</h1>
+<div id="onlineUsers">在线玩家：0</div>
+<div>
+    <button id="createRoom">创建房间</button>
+    <input type="text" id="roomIdInput" placeholder="输入房间 ID" />
+    <button id="joinRoom">加入房间</button>
+    <button id="quickMatch">快速匹配</button>
+</div>
+<div id="roomId"></div>
+<div id="playerCount"></div>
+<div id="playerList">
+    <h3>玩家列表：</h3>
+    <ul id="players"></ul>
+</div>
+<div id="gameSettings" style="display: none;">
+    <h3>游戏设置</h3>
+    <label>
+        胜利条件：
+        <select id="victoryCondition">
+            <option value="score">达到分数</option>
+            <option value="rounds">回合数</option>
+        </select>
+    </label>
+    <br />
+    <label id="targetScoreLabel">
+        目标分数：
+        <input type="number" id="targetScore" min="1" value="5" />
+    </label>
+    <label id="totalRoundsLabel" style="display: none;">
+        总回合数：
+        <input type="number" id="totalRounds" min="1" value="5" />
+    </label>
+</div>
+<div id="playerActions" style="display: none;">
+    <button id="confirmSettings">创建房间并开始游戏</button>
+</div>
+<div id="status"></div>
+<div id="choices" style="display: none;">
+    <button data-choice="rock">石头</button>
+    <button data-choice="paper">布</button>
+    <button data-choice="scissors">剪刀</button>
+</div>
+<!-- 聊天和排行榜部分保持不变 -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>
