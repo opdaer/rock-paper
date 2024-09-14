@@ -4,7 +4,9 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
+
 const gameLogic = require('./gameLogic');
+
 const fs = require('fs');
 
 const app = express();
@@ -13,6 +15,11 @@ const io = socketIo(server);
 
 // 设置静态文件目录
 app.use(express.static(path.join(__dirname, '../public')));
+// 如果路由不匹配，返回 index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
 
 // 存储房间信息
 const rooms = {};
@@ -312,3 +319,4 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`服务器正在运行，端口：${PORT}`);
 });
+
