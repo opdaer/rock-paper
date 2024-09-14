@@ -21,16 +21,10 @@ body {
   margin-top: 20px;
 }
 
-#handCards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-  grid-gap: 10px;
-  justify-items: center;
-}
-
+/* 调整牌的尺寸为方形 */
 .card {
-  width: 60px;
-  height: 90px;
+  width: 80px;
+  height: 80px; /* 高度与宽度相等，形成方形 */
   margin: 5px;
   border: 2px solid #fff;
   border-radius: 10px;
@@ -40,10 +34,24 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 24px; /* 增大字体 */
   font-weight: bold;
 }
 
+/* 调整字体大小，提升可读性 */
+.card div {
+  font-size: 24px;
+}
+
+/* 调整手牌区域的布局，适应新的牌尺寸 */
+#handCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  grid-gap: 10px;
+  justify-items: center;
+}
+
+/* 颜色样式 */
 .card.red {
   background-color: #e74c3c;
 }
@@ -64,7 +72,6 @@ body {
 .card.black {
   background-color: #34495e;
 }
-
 #gameStatus {
   margin-bottom: 20px;
 }

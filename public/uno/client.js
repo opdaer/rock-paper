@@ -266,14 +266,11 @@ function updateHandCardsDisplay() {
     valueDiv.innerText = card.value;
     cardDiv.appendChild(valueDiv);
 
+    // 为每张牌绑定点击事件监听器
+    cardDiv.addEventListener('click', onCardClick);
+
     handCardsDiv.appendChild(cardDiv);
   });
-  // 如果是玩家的回合，启用手牌点击事件
-  if (gameState && gameState.currentPlayerId === socket.id) {
-    enableHandCards();
-  } else {
-    disableHandCards();
-  }
 }
 
 // 点击手牌出牌

@@ -315,7 +315,23 @@ io.on('connection', (socket) => {
 
 // 处理石头剪刀布游戏的事件
 function handleRpsGameEvents(socket) {
-    // ...（石头剪刀布游戏的事件处理逻辑，保持不变）
+    // 处理 startGame 事件
+    socket.on('startGame', (roomId) => {
+        if (rooms[roomId] && rooms[roomId].gameType === 'rps') {
+            if (rooms[roomId].roomOwner !== socket.id) {
+                socket.emit('errorMessage', '只有房主才能开始游戏');
+                return;
+            }
+
+            // 重置游戏状态
+            rooms[roomId].status = {};
+            rooms[roomId].choices = {};
+            rooms[roomId].round = 1;
+
+            io.to(roomId).emit('rpsGameStarted');
+            io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+        }
+    });
 }
 
 // 处理 UNO 游戏的事件

@@ -207,6 +207,7 @@ document.getElementById('startGame').addEventListener('click', () => {
     socket.emit('startGame', roomId);
 });
 
+
 // 玩家选择
 document.getElementById('choices').addEventListener('click', (e) => {
     if (e.target.tagName === 'BUTTON') {
