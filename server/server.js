@@ -56,18 +56,27 @@ if (fs.existsSync(leaderboardPath)) {
 }
 
 let onlineUsers = 0;
+let onlineUserList = {}; // 在线用户列表
+let roomList = {}; // 房间列表
 
 io.on('connection', (socket) => {
     onlineUsers++;
     io.emit('updateOnlineUsers', onlineUsers);
 
-    console.log(`新用户连接：${socket.id}，当前在线用户：${onlineUsers}`);
-
     let playerName = socket.id.substr(0, 5);
 
+    // 设置玩家昵称
     socket.on('setPlayerName', (name) => {
         playerName = name || playerName;
+        onlineUserList[socket.id] = playerName;
+        io.emit('updateOnlineUserList', onlineUserList);
     });
+
+    // 当用户连接时，添加到在线用户列表
+    onlineUserList[socket.id] = playerName;
+    io.emit('updateOnlineUserList', onlineUserList);
+
+    console.log(`新用户连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
     // 创建房间
     socket.on('createRoom', (settings, callback) => {
@@ -86,6 +95,14 @@ io.on('connection', (socket) => {
 
         availableRooms.push(roomId);
 
+        // 更新房间列表
+        roomList[roomId] = {
+            id: roomId,
+            players: rooms[roomId].players,
+            settings: settings,
+        };
+        io.emit('updateRoomList', roomList);
+
         callback(roomId);
         io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
         io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
@@ -98,6 +115,10 @@ io.on('connection', (socket) => {
             rooms[roomId].players[socket.id] = playerName;
             rooms[roomId].scores[socket.id] = 0;
             callback(true, rooms[roomId].settings);
+
+            // 更新房间列表
+            roomList[roomId].players = rooms[roomId].players;
+            io.emit('updateRoomList', roomList);
 
             // 向房间内所有玩家广播更新后的玩家列表和状态
             io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
@@ -124,6 +145,10 @@ io.on('connection', (socket) => {
                 }
             }
 
+            // 更新房间列表
+            roomList[roomId].players = rooms[roomId].players;
+            io.emit('updateRoomList', roomList);
+
             callback(roomId, rooms[roomId].settings);
             io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
@@ -143,6 +168,14 @@ io.on('connection', (socket) => {
             rooms[roomId].scores[socket.id] = 0;
 
             availableRooms.push(roomId);
+
+            // 更新房间列表
+            roomList[roomId] = {
+                id: roomId,
+                players: rooms[roomId].players,
+                settings: settings,
+            };
+            io.emit('updateRoomList', roomList);
 
             callback(roomId, settings);
             io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
@@ -246,12 +279,15 @@ io.on('connection', (socket) => {
                     io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
                     io.to(roomId).emit('updateRound', rooms[roomId].round);
                 } else {
-                    // 删除房间
-                    delete rooms[roomId];
-                    const index = availableRooms.indexOf(roomId);
-                    if (index !== -1) {
-                        availableRooms.splice(index, 1);
-                    }
+                    // 保留房间信息，等待重新开始
+                    rooms[roomId].choices = {};
+                    rooms[roomId].round = 1;
+                    // 重置玩家状态
+                    const playerIds = Object.keys(rooms[roomId].players);
+                    playerIds.forEach((id) => {
+                        rooms[roomId].scores[id] = 0;
+                        rooms[roomId].status[id] = '等待中';
+                    });
                 }
             }
         }
@@ -272,9 +308,10 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
 
-            // 如果房间没人了，删除房间
+            // 更新房间列表
             if (Object.keys(rooms[roomId].players).length === 0) {
                 delete rooms[roomId];
+                delete roomList[roomId];
                 const index = availableRooms.indexOf(roomId);
                 if (index !== -1) {
                     availableRooms.splice(index, 1);
@@ -284,8 +321,77 @@ io.on('connection', (socket) => {
                 if (!availableRooms.includes(roomId)) {
                     availableRooms.push(roomId);
                 }
+                roomList[roomId].players = rooms[roomId].players;
             }
+            io.emit('updateRoomList', roomList);
         }
+    });
+
+    // 重新开始游戏
+    socket.on('restartGame', (roomId) => {
+        if (rooms[roomId]) {
+            rooms[roomId].choices = {};
+            rooms[roomId].scores = {};
+            rooms[roomId].status = {};
+            rooms[roomId].round = 1;
+            const playerIds = Object.keys(rooms[roomId].players);
+            playerIds.forEach((id) => {
+                rooms[roomId].scores[id] = 0;
+                rooms[roomId].status[id] = '思考中';
+            });
+            io.to(roomId).emit('gameRestarted', rooms[roomId].settings);
+            io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+        }
+    });
+
+    // 处理游戏邀请
+    socket.on('invitePlayer', (targetSocketId) => {
+        io.to(targetSocketId).emit('receiveInvitation', {
+            from: socket.id,
+            name: playerName,
+        });
+    });
+
+    // 处理接受邀请
+    socket.on('acceptInvitation', (data) => {
+        const { fromSocketId } = data;
+        const roomId = generateRoomId();
+        rooms[roomId] = {
+            players: {},
+            choices: {},
+            scores: {},
+            status: {},
+            settings: defaultGameSettings(),
+            round: 1,
+        };
+        // 两个玩家加入同一个房间
+        const fromSocket = io.sockets.sockets.get(fromSocketId);
+        if (fromSocket) {
+            fromSocket.join(roomId);
+            rooms[roomId].players[fromSocketId] = onlineUserList[fromSocketId];
+            rooms[roomId].scores[fromSocketId] = 0;
+        }
+        socket.join(roomId);
+        rooms[roomId].players[socket.id] = playerName;
+        rooms[roomId].scores[socket.id] = 0;
+
+        // 更新房间列表
+        roomList[roomId] = {
+            id: roomId,
+            players: rooms[roomId].players,
+            settings: rooms[roomId].settings,
+        };
+        io.emit('updateRoomList', roomList);
+
+        // 通知双方进入房间
+        if (fromSocket) {
+            fromSocket.emit('invitationAccepted', { roomId, settings: rooms[roomId].settings });
+        }
+        socket.emit('invitationAccepted', { roomId, settings: rooms[roomId].settings });
+
+        // 更新玩家列表和状态
+        io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+        io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
     });
 
     // 聊天功能
@@ -304,6 +410,10 @@ io.on('connection', (socket) => {
         io.emit('updateOnlineUsers', onlineUsers);
         console.log(`用户断开连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
+        // 从在线用户列表中删除
+        delete onlineUserList[socket.id];
+        io.emit('updateOnlineUserList', onlineUserList);
+
         for (const roomId in rooms) {
             if (rooms[roomId].players[socket.id]) {
                 const playerName = rooms[roomId].players[socket.id];
@@ -316,9 +426,10 @@ io.on('connection', (socket) => {
                 io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
                 io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
 
-                // 如果房间没人了，删除房间
+                // 更新房间列表
                 if (Object.keys(rooms[roomId].players).length === 0) {
                     delete rooms[roomId];
+                    delete roomList[roomId];
                     const index = availableRooms.indexOf(roomId);
                     if (index !== -1) {
                         availableRooms.splice(index, 1);
@@ -328,7 +439,9 @@ io.on('connection', (socket) => {
                     if (!availableRooms.includes(roomId)) {
                         availableRooms.push(roomId);
                     }
+                    roomList[roomId].players = rooms[roomId].players;
                 }
+                io.emit('updateRoomList', roomList);
             }
         }
     });

@@ -27,6 +27,93 @@ socket.on('updateOnlineUsers', (count) => {
     document.getElementById('onlineUsers').innerText = `在线玩家：${count}`;
 });
 
+// 更新在线用户列表
+socket.on('updateOnlineUserList', (userList) => {
+    const onlineUsersUl = document.getElementById('onlineUsersList');
+    onlineUsersUl.innerHTML = '';
+    for (const [id, name] of Object.entries(userList)) {
+        if (id !== socket.id) { // 不显示自己
+            const li = document.createElement('li');
+            li.textContent = name;
+            li.dataset.userId = id;
+            li.addEventListener('click', () => {
+                inviteUser(id);
+            });
+            onlineUsersUl.appendChild(li);
+        }
+    }
+});
+
+// 更新房间列表
+socket.on('updateRoomList', (roomList) => {
+    const roomListUl = document.getElementById('roomList');
+    roomListUl.innerHTML = '';
+    for (const roomId in roomList) {
+        const li = document.createElement('li');
+        li.textContent = `房间 ${roomId} - 玩家人数：${Object.keys(roomList[roomId].players).length}`;
+        li.dataset.roomId = roomId;
+        li.addEventListener('click', () => {
+            joinRoomById(roomId);
+        });
+        roomListUl.appendChild(li);
+    }
+});
+
+// 加入指定房间
+function joinRoomById(roomIdToJoin) {
+    if (roomId) {
+        alert('您已经在房间中，无法加入其他房间');
+        return;
+    }
+    socket.emit('joinRoom', roomIdToJoin, (success, settings) => {
+        if (success) {
+            roomId = roomIdToJoin;
+            document.getElementById('roomId').innerText = `房间 ID: ${roomId}`;
+            alert(`已加入房间，房间 ID: ${roomId}`);
+            applyGameSettings(settings);
+            document.getElementById('gameSettings').style.display = 'none';
+            document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
+            disableRoomButtons();
+            document.getElementById('status').innerText = '等待房主开始游戏...';
+            document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
+        } else {
+            alert('加入房间失败，房间不存在');
+        }
+    });
+}
+
+// 邀请用户
+function inviteUser(targetSocketId) {
+    if (roomId) {
+        alert('您已经在房间中，无法邀请其他玩家');
+        return;
+    }
+    socket.emit('invitePlayer', targetSocketId);
+    alert('邀请已发送，等待对方接受');
+}
+
+// 接收邀请
+socket.on('receiveInvitation', (data) => {
+    const { from, name } = data;
+    const accept = confirm(`玩家 ${name} 邀请您进行游戏，是否接受？`);
+    if (accept) {
+        socket.emit('acceptInvitation', { fromSocketId: from });
+    }
+});
+
+// 邀请被接受，加入房间
+socket.on('invitationAccepted', (data) => {
+    const { roomId: newRoomId, settings } = data;
+    roomId = newRoomId;
+    document.getElementById('roomId').innerText = `房间 ID: ${roomId}`;
+    applyGameSettings(settings);
+    document.getElementById('gameSettings').style.display = 'none';
+    document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
+    disableRoomButtons();
+    document.getElementById('status').innerText = '等待房主开始游戏...';
+    document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
+});
+
 // 创建房间
 document.getElementById('createRoom').addEventListener('click', () => {
     document.getElementById('gameSettings').style.display = 'block'; // 显示游戏设置
@@ -56,21 +143,7 @@ document.getElementById('joinRoom').addEventListener('click', () => {
         alert('请输入房间 ID');
         return;
     }
-    socket.emit('joinRoom', inputRoomId, (success, settings) => {
-        if (success) {
-            roomId = inputRoomId;
-            document.getElementById('roomId').innerText = `房间 ID: ${roomId}`;
-            alert(`已加入房间，房间 ID: ${roomId}`);
-            applyGameSettings(settings);
-            document.getElementById('gameSettings').style.display = 'none';
-            document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
-            disableRoomButtons();
-            document.getElementById('status').innerText = '等待房主开始游戏...';
-            document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
-        } else {
-            alert('加入房间失败，房间不存在');
-        }
-    });
+    joinRoomById(inputRoomId);
 });
 
 // 快速匹配
@@ -126,6 +199,14 @@ document.getElementById('leaveRoom').addEventListener('click', () => {
     }
 });
 
+// 重新开始游戏
+document.getElementById('restartGame').addEventListener('click', () => {
+    if (roomId) {
+        socket.emit('restartGame', roomId);
+        document.getElementById('restartGame').style.display = 'none';
+    }
+});
+
 function resetClientState() {
     roomId = null;
     players = {};
@@ -137,6 +218,7 @@ function resetClientState() {
     document.getElementById('startGameContainer').style.display = 'none';
     document.getElementById('leaveRoom').style.display = 'none';
     document.getElementById('currentRound').style.display = 'none';
+    document.getElementById('restartGame').style.display = 'none';
     enableRoomButtons();
 }
 
@@ -223,6 +305,19 @@ socket.on('gameEnded', (data) => {
         .then((data) => {
             updateLeaderboard(data);
         });
+    // 显示“重新开始”按钮
+    document.getElementById('restartGame').style.display = 'block';
+});
+
+// 游戏重新开始
+socket.on('gameRestarted', (settings) => {
+    document.getElementById('status').innerText = '游戏已重新开始，请选择：';
+    hasMadeChoice = false;
+    enableChoiceButtons();
+    applyGameSettings(settings);
+    document.getElementById('choices').style.display = 'block';
+    document.getElementById('currentRound').style.display = 'block';
+    document.getElementById('restartGame').style.display = 'none';
 });
 
 // 玩家加入
@@ -253,6 +348,16 @@ document.getElementById('sendChat').addEventListener('click', () => {
     if (message && roomId) {
         socket.emit('sendMessage', roomId, message);
         document.getElementById('chatInput').value = '';
+    }
+});
+
+// 快捷回复
+document.getElementById('quickReplies').addEventListener('click', (e) => {
+    if (e.target.classList.contains('quickReply')) {
+        const message = e.target.textContent;
+        if (roomId) {
+            socket.emit('sendMessage', roomId, message);
+        }
     }
 });
 

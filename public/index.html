@@ -54,15 +54,29 @@
     <button data-choice="scissors">剪刀</button>
 </div>
 <button id="leaveRoom" style="display: none;">退出游戏</button>
+<button id="restartGame" style="display: none;">重新开始</button>
 <div id="chat">
     <h3>聊天</h3>
     <div id="messages"></div>
     <input type="text" id="chatInput" placeholder="输入消息" />
     <button id="sendChat">发送</button>
+    <div id="quickReplies">
+        <button class="quickReply">你快点，我等到花儿都谢了</button>
+        <button class="quickReply">马上来，等我一下</button>
+        <!-- 可以添加更多快捷回复 -->
+    </div>
 </div>
 <div id="leaderboardSection">
     <h3>排行榜</h3>
     <ul id="leaderboard"></ul>
+</div>
+<div id="roomListSection">
+    <h3>房间列表：</h3>
+    <ul id="roomList"></ul>
+</div>
+<div id="onlineUserSection">
+    <h3>在线用户：</h3>
+    <ul id="onlineUsersList"></ul>
 </div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
