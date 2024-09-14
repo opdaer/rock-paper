@@ -78,6 +78,15 @@ io.on('connection', (socket) => {
 
     console.log(`新用户连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
+    // 客户端请求玩家列表和房主信息
+    socket.on('requestPlayerList', (roomId) => {
+        if (rooms[roomId]) {
+            socket.emit('receivePlayerList', {
+                players: rooms[roomId].players,
+                roomOwner: rooms[roomId].roomOwner,
+            });
+        }
+    });
     // 创建房间
     socket.on('createRoom', (settings, callback) => {
         const roomId = generateRoomId();

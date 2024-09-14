@@ -137,10 +137,8 @@ document.getElementById('confirmSettings').addEventListener('click', () => {
         document.getElementById('playerActions').style.display = 'none';
         document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
 
-        // 显示“开始游戏”按钮
-        if (currentRoomOwner === socket.id) {
-            document.getElementById('startGameContainer').style.display = 'block';
-        }
+        // 请求服务器发送当前的玩家列表和房主信息
+        socket.emit('requestPlayerList', roomId);
     });
 });
 
@@ -166,7 +164,25 @@ document.getElementById('quickMatch').addEventListener('click', () => {
         disableRoomButtons();
         document.getElementById('status').innerText = '等待房主开始游戏...';
         document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
+
+        // 请求服务器发送当前的玩家列表和房主信息
+        socket.emit('requestPlayerList', roomId);
     });
+});
+
+// 请求玩家列表和房主信息
+socket.on('receivePlayerList', (data) => {
+    players = data.players;
+    currentRoomOwner = data.roomOwner;
+    updatePlayerStatusDisplay();
+    document.getElementById('playerCount').innerText = `玩家人数：${Object.keys(players).length}`;
+
+    // 根据房主身份显示或隐藏“开始游戏”按钮
+    if (roomId && currentRoomOwner === socket.id) {
+        document.getElementById('startGameContainer').style.display = 'block';
+    } else {
+        document.getElementById('startGameContainer').style.display = 'none';
+    }
 });
 
 // 开始游戏
