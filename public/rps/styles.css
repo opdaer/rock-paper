@@ -1,0 +1,66 @@
+/* public/rps/styles.css */
+
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 20px;
+}
+
+#onlineUsers {
+    margin-bottom: 20px;
+}
+
+#roomActions, #gameSettings, #playerActions, #choices, #startGameContainer, #restartGame {
+    margin: 10px 0;
+}
+
+#choices button {
+    padding: 10px 20px;
+    margin: 5px;
+}
+
+#chat {
+    margin-top: 20px;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: left;
+}
+
+#messages {
+    border: 1px solid #ccc;
+    height: 150px;
+    overflow-y: scroll;
+    padding: 5px;
+}
+
+#chatInput {
+    width: 80%;
+    padding: 5px;
+}
+
+#sendChat {
+    padding: 5px 10px;
+}
+
+#quickReplies {
+    margin-top: 10px;
+}
+
+#quickReplies .quickReply {
+    padding: 5px 10px;
+    margin-right: 5px;
+}
+
+#leaderboardSection, #onlineUserSection, #roomListSection {
+    margin-top: 30px;
+    text-align: left;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+#leaderboard, #onlineUsersList, #roomList {
+    list-style-type: none;
+    padding: 0;
+}

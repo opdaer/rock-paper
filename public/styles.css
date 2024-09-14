@@ -6,161 +6,40 @@ body {
     margin-top: 20px;
 }
 
-#choices button {
-    margin: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
+#onlineUsers {
+    margin-bottom: 20px;
 }
 
-#status {
-    margin-top: 20px;
-    white-space: pre-wrap;
-    text-align: left;
-    display: inline-block;
-    max-width: 400px;
-}
-
-#roomId {
-    margin-top: 10px;
-}
-
-#playerActions {
-    margin-top: 20px;
-}
-
-#playerList {
-    margin-top: 20px;
-}
-
-#playerList ul {
+#gameList {
     list-style-type: none;
     padding: 0;
 }
 
-#playerList li {
-    margin: 5px 0;
+#gameList li {
+    margin: 10px 0;
 }
 
-#playerCount {
-    margin-top: 10px;
+#gameList a {
+    text-decoration: none;
+    font-size: 24px;
+    color: #007bff;
 }
 
-#chat {
-    margin-top: 20px;
-    max-width: 400px;
-    margin-left: auto;
-    margin-right: auto;
-    text-align: left;
+#gameList a:hover {
+    text-decoration: underline;
 }
 
-#messages {
-    border: 1px solid #ccc;
-    height: 150px;
-    overflow-y: scroll;
-    padding: 5px;
-}
-
-#chatInput {
-    width: 80%;
-    padding: 5px;
-}
-
-#sendChat {
-    padding: 5px 10px;
-}
-
-#leaderboardSection {
-    margin-top: 20px;
-}
-
-#startGameContainer {
-    margin-top: 20px;
-    text-align: center;
-}
-
-#startGame {
-    padding: 10px 20px;
-    font-size: 18px;
-    background-color: #28a745;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#startGame:hover {
-    background-color: #218838;
-}
-
-#currentRound {
-    margin-top: 20px;
-    font-size: 18px;
-}
-
-#leaveRoom {
-    margin-top: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#leaveRoom:hover {
-    background-color: #c82333;
-}
-
-#restartGame {
-    margin-top: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-}
-
-#restartGame:hover {
-    background-color: #0056b3;
-}
-
-#quickReplies {
-    margin-top: 10px;
-}
-
-#quickReplies .quickReply {
-    margin: 2px;
-    padding: 5px 10px;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-#roomListSection, #onlineUserSection {
-    margin-top: 20px;
+#leaderboardSection, #onlineUserSection {
+    margin-top: 30px;
     text-align: left;
     max-width: 400px;
     margin-left: auto;
     margin-right: auto;
 }
 
-#roomList, #onlineUsersList {
+#leaderboard, #onlineUsersList {
     list-style-type: none;
     padding: 0;
-}
-
-#roomList li, #onlineUsersList li {
-    margin: 5px 0;
-    cursor: pointer;
-    padding: 5px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
-
-#roomList li:hover, #onlineUsersList li:hover {
-    background-color: #f0f0f0;
 }
 
 @media (max-width: 600px) {
@@ -168,20 +47,7 @@ body {
         margin-top: 10px;
     }
 
-    #choices button {
-        padding: 8px 16px;
-        font-size: 14px;
-    }
-
-    #status {
-        max-width: 100%;
-    }
-
-    #chatInput {
-        width: 70%;
-    }
-
-    #sendChat {
-        padding: 5px;
+    #gameList a {
+        font-size: 20px;
     }
 }

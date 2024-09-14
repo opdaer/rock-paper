@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>石头剪刀布游戏</title>
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+<h1>石头剪刀布游戏</h1>
+
+<!-- 在线玩家数量 -->
+<div id="onlineUsers">在线玩家：0</div>
+
+<!-- 房间操作 -->
+<div id="roomActions">
+    <button id="createRoom">创建房间</button>
+    <input type="text" id="roomIdInput" placeholder="输入房间 ID" />
+    <button id="joinRoom">加入房间</button>
+    <button id="quickMatch">快速匹配</button>
+</div>
+
+<!-- 游戏设置 -->
+<div id="gameSettings" style="display: none;">
+    <h3>游戏设置</h3>
+    <label for="victoryCondition">胜利条件：</label>
+    <select id="victoryCondition">
+        <option value="score">达到目标得分</option>
+        <option value="rounds">固定回合数</option>
+    </select>
+    <br />
+    <label id="targetScoreLabel" for="targetScore">目标得分：</label>
+    <input type="number" id="targetScore" value="5" min="1" />
+    <label id="totalRoundsLabel" for="totalRounds" style="display: none;">总回合数：</label>
+    <input type="number" id="totalRounds" value="5" min="1" style="display: none;" />
+</div>
+
+<!-- 确认游戏设置按钮 -->
+<div id="playerActions" style="display: none;">
+    <button id="confirmSettings">确认设置并创建房间</button>
+</div>
+
+<!-- 房间信息 -->
+<div id="roomInfo">
+    <div id="roomId"></div>
+    <div id="playerCount"></div>
+    <div id="currentRound" style="display: none;"></div>
+</div>
+
+<!-- 玩家列表 -->
+<div id="playerList">
+    <h3>玩家列表：</h3>
+    <ul id="players"></ul>
+</div>
+
+<!-- 游戏状态 -->
+<div id="status"></div>
+
+<!-- 选择区域 -->
+<div id="choices" style="display: none;">
+    <button data-choice="rock">石头</button>
+    <button data-choice="paper">布</button>
+    <button data-choice="scissors">剪刀</button>
+</div>
+
+<!-- 开始游戏按钮（仅房主可见） -->
+<div id="startGameContainer" style="display: none;">
+    <button id="startGame">开始游戏</button>
+</div>
+
+<!-- 重新开始游戏按钮（仅房主可见） -->
+<button id="restartGame" style="display: none;">重新开始游戏</button>
+
+<!-- 退出房间按钮 -->
+<button id="leaveRoom" style="display: none;">退出游戏</button>
+
+<!-- 聊天区域 -->
+<div id="chat">
+    <h3>聊天</h3>
+    <div id="messages"></div>
+    <input type="text" id="chatInput" placeholder="输入消息" />
+    <button id="sendChat">发送</button>
+    <div id="quickReplies">
+        <button class="quickReply">你好</button>
+        <button class="quickReply">加油</button>
+        <button class="quickReply">快点啦</button>
+    </div>
+</div>
+
+<!-- 排行榜 -->
+<div id="leaderboardSection">
+    <h3>排行榜</h3>
+    <ul id="leaderboard"></ul>
+</div>
+
+<!-- 在线用户列表 -->
+<div id="onlineUserSection">
+    <h3>在线用户：</h3>
+    <ul id="onlineUsersList"></ul>
+</div>
+
+<!-- 房间列表 -->
+<div id="roomListSection">
+    <h3>房间列表：</h3>
+    <ul id="roomList"></ul>
+</div>
+
+<!-- 引入脚本 -->
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>

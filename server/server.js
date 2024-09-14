@@ -4,7 +4,8 @@ const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
 const path = require('path');
-const gameLogic = require('./gameLogic');
+const gameLogic = require('./gameLogic'); // 石头剪刀布的游戏逻辑
+const unoGameLogic = require('./unoGameLogic'); // UNO 的游戏逻辑
 const fs = require('fs');
 const cors = require('cors');
 
@@ -78,39 +79,40 @@ io.on('connection', (socket) => {
 
     console.log(`新用户连接：${socket.id}，当前在线用户：${onlineUsers}`);
 
-    // 客户端请求玩家列表和房主信息
-    socket.on('requestPlayerList', (roomId) => {
-        if (rooms[roomId]) {
-            socket.emit('receivePlayerList', {
-                players: rooms[roomId].players,
-                roomOwner: rooms[roomId].roomOwner,
-            });
-        }
-    });
     // 创建房间
-    socket.on('createRoom', (settings, callback) => {
+    socket.on('createRoom', (gameType, settings, callback) => {
         const roomId = generateRoomId();
         rooms[roomId] = {
+            gameType: gameType, // 游戏类型
             players: {},
-            choices: {},
-            scores: {},
             status: {},
             settings: settings,
-            round: 1,
             roomOwner: socket.id, // 设置房主
         };
+        // 根据游戏类型初始化游戏数据
+        if (gameType === 'rps') {
+            rooms[roomId].choices = {};
+            rooms[roomId].scores = {};
+            rooms[roomId].round = 1;
+        } else if (gameType === 'uno') {
+            rooms[roomId].unoGame = unoGameLogic.createGame();
+            unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
+        }
         socket.join(roomId);
         rooms[roomId].players[socket.id] = playerName;
-        rooms[roomId].scores[socket.id] = 0;
+        if (gameType === 'rps') {
+            rooms[roomId].scores[socket.id] = 0;
+        }
 
         availableRooms.push(roomId);
 
         // 更新房间列表
         roomList[roomId] = {
             id: roomId,
+            gameType: gameType,
             players: rooms[roomId].players,
             settings: settings,
-            roomOwner: rooms[roomId].roomOwner, // 添加房主信息
+            roomOwner: rooms[roomId].roomOwner,
         };
         io.emit('updateRoomList', roomList);
 
@@ -127,13 +129,14 @@ io.on('connection', (socket) => {
         if (rooms[roomId]) {
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
-            rooms[roomId].scores[socket.id] = 0;
-
+            if (rooms[roomId].gameType === 'rps') {
+                rooms[roomId].scores[socket.id] = 0;
+            }
             // 更新房间列表
             roomList[roomId].players = rooms[roomId].players;
             io.emit('updateRoomList', roomList);
 
-            callback(true, rooms[roomId].settings);
+            callback(true, rooms[roomId].gameType, rooms[roomId].settings);
             io.to(roomId).emit('updatePlayerList', {
                 players: rooms[roomId].players,
                 roomOwner: rooms[roomId].roomOwner,
@@ -145,22 +148,25 @@ io.on('connection', (socket) => {
     });
 
     // 快速匹配
-    socket.on('quickMatch', (callback) => {
+    socket.on('quickMatch', (gameType, callback) => {
         let roomId;
-        if (availableRooms.length > 0) {
-            roomId = availableRooms[Math.floor(Math.random() * availableRooms.length)];
+        const matchingRooms = availableRooms.filter(
+            (id) => rooms[id].gameType === gameType
+        );
+        if (matchingRooms.length > 0) {
+            roomId = matchingRooms[Math.floor(Math.random() * matchingRooms.length)];
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
-            rooms[roomId].scores[socket.id] = 0;
-
-            // 如果房间人数达到4人，从可用房间列表中移除
-            if (Object.keys(rooms[roomId].players).length >= 4) {
-                const index = availableRooms.indexOf(roomId);
-                if (index !== -1) {
-                    availableRooms.splice(index, 1);
+            if (gameType === 'rps') {
+                rooms[roomId].scores[socket.id] = 0;
+                // 如果房间人数达到4人，从可用房间列表中移除
+                if (Object.keys(rooms[roomId].players).length >= 4) {
+                    const index = availableRooms.indexOf(roomId);
+                    if (index !== -1) {
+                        availableRooms.splice(index, 1);
+                    }
                 }
             }
-
             // 更新房间列表
             roomList[roomId].players = rooms[roomId].players;
             io.emit('updateRoomList', roomList);
@@ -172,29 +178,38 @@ io.on('connection', (socket) => {
             });
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         } else {
-            const settings = defaultGameSettings();
+            const settings = defaultGameSettings(gameType);
             roomId = generateRoomId();
             rooms[roomId] = {
+                gameType: gameType,
                 players: {},
-                choices: {},
-                scores: {},
                 status: {},
                 settings: settings,
-                round: 1,
-                roomOwner: socket.id, // 设置房主
+                roomOwner: socket.id,
             };
+            if (gameType === 'rps') {
+                rooms[roomId].choices = {};
+                rooms[roomId].scores = {};
+                rooms[roomId].round = 1;
+            } else if (gameType === 'uno') {
+                rooms[roomId].unoGame = unoGameLogic.createGame();
+                unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
+            }
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
-            rooms[roomId].scores[socket.id] = 0;
+            if (gameType === 'rps') {
+                rooms[roomId].scores[socket.id] = 0;
+            }
 
             availableRooms.push(roomId);
 
             // 更新房间列表
             roomList[roomId] = {
                 id: roomId,
+                gameType: gameType,
                 players: rooms[roomId].players,
                 settings: settings,
-                roomOwner: rooms[roomId].roomOwner, // 添加房主信息
+                roomOwner: rooms[roomId].roomOwner,
             };
             io.emit('updateRoomList', roomList);
 
@@ -207,6 +222,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    // 客户端请求玩家列表和房主信息
+    socket.on('requestPlayerList', (roomId) => {
+        if (rooms[roomId]) {
+            socket.emit('receivePlayerList', {
+                players: rooms[roomId].players,
+                roomOwner: rooms[roomId].roomOwner,
+            });
+        }
+    });
+
     // 开始游戏
     socket.on('startGame', (roomId) => {
         if (rooms[roomId]) {
@@ -215,7 +240,7 @@ io.on('connection', (socket) => {
                 return;
             }
 
-            // 重置玩家状态为“思考中”
+            // 重置玩家状态为“思考中”或其他初始状态
             const playerIds = Object.keys(rooms[roomId].players);
             playerIds.forEach((id) => {
                 rooms[roomId].status[id] = '思考中';
@@ -224,13 +249,148 @@ io.on('connection', (socket) => {
             // 通知客户端更新状态
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
 
-            io.to(roomId).emit('gameStarted', rooms[roomId].settings);
+            if (rooms[roomId].gameType === 'rps') {
+                io.to(roomId).emit('gameStarted', rooms[roomId].settings);
+            } else if (rooms[roomId].gameType === 'uno') {
+                // 开始 UNO 游戏
+                unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
+                io.to(roomId).emit('unoGameStarted', rooms[roomId].settings);
+                // 发送初始游戏状态
+                const gameState = unoGameLogic.getGameState(rooms[roomId].unoGame);
+                io.to(roomId).emit('unoGameStateUpdated', { gameState });
+            }
         }
     });
 
-    // 玩家选择
-    socket.on('makeChoice', (roomId, choice) => {
+    // 玩家离开房间
+    socket.on('leaveRoom', (roomId) => {
         if (rooms[roomId]) {
+            socket.leave(roomId);
+            const playerName = rooms[roomId].players[socket.id];
+            delete rooms[roomId].players[socket.id];
+            if (rooms[roomId].gameType === 'rps') {
+                delete rooms[roomId].scores[socket.id];
+                delete rooms[roomId].choices[socket.id];
+            } else if (rooms[roomId].gameType === 'uno') {
+                // 从游戏中移除玩家
+                unoGameLogic.removePlayer(rooms[roomId].unoGame, socket.id);
+            }
+            delete rooms[roomId].status[socket.id];
+
+            // 如果离开的是房主，转移房主身份
+            if (rooms[roomId].roomOwner === socket.id) {
+                const remainingPlayers = Object.keys(rooms[roomId].players);
+                if (remainingPlayers.length > 0) {
+                    rooms[roomId].roomOwner = remainingPlayers[0];
+                } else {
+                    // 房间没人了，删除房间
+                    delete rooms[roomId];
+                    delete roomList[roomId];
+                    const index = availableRooms.indexOf(roomId);
+                    if (index !== -1) {
+                        availableRooms.splice(index, 1);
+                    }
+                }
+            }
+
+            // 更新房间列表
+            if (rooms[roomId]) {
+                roomList[roomId].players = rooms[roomId].players;
+                roomList[roomId].roomOwner = rooms[roomId].roomOwner;
+            } else {
+                delete roomList[roomId];
+            }
+            io.emit('updateRoomList', roomList);
+
+            // 更新房间状态
+            io.to(roomId).emit('playerLeft', playerName);
+            io.to(roomId).emit('updatePlayerList', {
+                players: rooms[roomId]?.players || {},
+                roomOwner: rooms[roomId]?.roomOwner || null,
+            });
+            io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
+        }
+    });
+
+    // 处理石头剪刀布游戏的事件
+    handleRpsGameEvents(socket);
+
+    // 处理 UNO 游戏的事件
+    handleUnoGameEvents(socket);
+
+    // 处理聊天消息
+    socket.on('sendMessage', (roomId, message) => {
+        if (rooms[roomId]) {
+            io.to(roomId).emit('receiveMessage', {
+                player: playerName,
+                message: message,
+            });
+        }
+    });
+
+    // 断开连接
+    socket.on('disconnect', () => {
+        onlineUsers--;
+        io.emit('updateOnlineUsers', onlineUsers);
+        console.log(`用户断开连接：${socket.id}，当前在线用户：${onlineUsers}`);
+
+        // 从在线用户列表中删除
+        delete onlineUserList[socket.id];
+        io.emit('updateOnlineUserList', onlineUserList);
+
+        for (const roomId in rooms) {
+            if (rooms[roomId].players[socket.id]) {
+                const playerName = rooms[roomId].players[socket.id];
+                delete rooms[roomId].players[socket.id];
+                if (rooms[roomId].gameType === 'rps') {
+                    delete rooms[roomId].scores[socket.id];
+                    delete rooms[roomId].choices[socket.id];
+                } else if (rooms[roomId].gameType === 'uno') {
+                    // 从游戏中移除玩家
+                    unoGameLogic.removePlayer(rooms[roomId].unoGame, socket.id);
+                }
+                delete rooms[roomId].status[socket.id];
+
+                // 如果离开的是房主，转移房主身份
+                if (rooms[roomId].roomOwner === socket.id) {
+                    const remainingPlayers = Object.keys(rooms[roomId].players);
+                    if (remainingPlayers.length > 0) {
+                        rooms[roomId].roomOwner = remainingPlayers[0];
+                    } else {
+                        // 房间没人了，删除房间
+                        delete rooms[roomId];
+                        delete roomList[roomId];
+                        const index = availableRooms.indexOf(roomId);
+                        if (index !== -1) {
+                            availableRooms.splice(index, 1);
+                        }
+                    }
+                }
+
+                // 更新房间列表
+                if (rooms[roomId]) {
+                    roomList[roomId].players = rooms[roomId].players;
+                    roomList[roomId].roomOwner = rooms[roomId].roomOwner;
+                } else {
+                    delete roomList[roomId];
+                }
+                io.emit('updateRoomList', roomList);
+
+                io.to(roomId).emit('playerLeft', playerName);
+                io.to(roomId).emit('updatePlayerList', {
+                    players: rooms[roomId]?.players || {},
+                    roomOwner: rooms[roomId]?.roomOwner || null,
+                });
+                io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
+            }
+        }
+    });
+});
+
+// 处理石头剪刀布游戏的事件
+function handleRpsGameEvents(socket) {
+    socket.on('makeChoice', (roomId, choice) => {
+        if (rooms[roomId] && rooms[roomId].gameType === 'rps') {
             rooms[roomId].choices[socket.id] = choice;
             rooms[roomId].status[socket.id] = '已出招';
 
@@ -322,54 +482,9 @@ io.on('connection', (socket) => {
         }
     });
 
-    // 玩家离开房间
-    socket.on('leaveRoom', (roomId) => {
-        if (rooms[roomId]) {
-            socket.leave(roomId);
-            const playerName = rooms[roomId].players[socket.id];
-            delete rooms[roomId].players[socket.id];
-            delete rooms[roomId].scores[socket.id];
-            delete rooms[roomId].choices[socket.id];
-            delete rooms[roomId].status[socket.id];
-
-            // 如果离开的是房主，转移房主身份
-            if (rooms[roomId].roomOwner === socket.id) {
-                const remainingPlayers = Object.keys(rooms[roomId].players);
-                if (remainingPlayers.length > 0) {
-                    rooms[roomId].roomOwner = remainingPlayers[0];
-                } else {
-                    // 房间没人了，删除房间
-                    delete rooms[roomId];
-                    delete roomList[roomId];
-                    const index = availableRooms.indexOf(roomId);
-                    if (index !== -1) {
-                        availableRooms.splice(index, 1);
-                    }
-                }
-            }
-
-            // 更新房间列表
-            if (rooms[roomId]) {
-                roomList[roomId].players = rooms[roomId].players;
-                roomList[roomId].roomOwner = rooms[roomId].roomOwner;
-            } else {
-                delete roomList[roomId];
-            }
-            io.emit('updateRoomList', roomList);
-
-            // 更新房间状态
-            io.to(roomId).emit('playerLeft', playerName);
-            io.to(roomId).emit('updatePlayerList', {
-                players: rooms[roomId]?.players || {},
-                roomOwner: rooms[roomId]?.roomOwner || null,
-            });
-            io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
-        }
-    });
-
-    // 重新开始游戏
+    // 重新开始石头剪刀布游戏
     socket.on('restartGame', (roomId) => {
-        if (rooms[roomId]) {
+        if (rooms[roomId] && rooms[roomId].gameType === 'rps') {
             if (rooms[roomId].roomOwner !== socket.id) {
                 socket.emit('errorMessage', '只有房主才能重新开始游戏');
                 return;
@@ -388,125 +503,71 @@ io.on('connection', (socket) => {
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         }
     });
+}
 
-    // 处理游戏邀请
-    socket.on('invitePlayer', (targetSocketId) => {
-        io.to(targetSocketId).emit('receiveInvitation', {
-            from: socket.id,
-            name: playerName,
-        });
-    });
-
-    // 处理接受邀请
-    socket.on('acceptInvitation', (data) => {
-        const { fromSocketId } = data;
-        const roomId = generateRoomId();
-        rooms[roomId] = {
-            players: {},
-            choices: {},
-            scores: {},
-            status: {},
-            settings: defaultGameSettings(),
-            round: 1,
-            roomOwner: fromSocketId, // 设置邀请者为房主
-        };
-        // 两个玩家加入同一个房间
-        const fromSocket = io.sockets.sockets.get(fromSocketId);
-        if (fromSocket) {
-            fromSocket.join(roomId);
-            rooms[roomId].players[fromSocketId] = onlineUserList[fromSocketId];
-            rooms[roomId].scores[fromSocketId] = 0;
-        }
-        socket.join(roomId);
-        rooms[roomId].players[socket.id] = playerName;
-        rooms[roomId].scores[socket.id] = 0;
-
-        // 更新房间列表
-        roomList[roomId] = {
-            id: roomId,
-            players: rooms[roomId].players,
-            settings: rooms[roomId].settings,
-            roomOwner: rooms[roomId].roomOwner,
-        };
-        io.emit('updateRoomList', roomList);
-
-        // 通知双方进入房间
-        if (fromSocket) {
-            fromSocket.emit('invitationAccepted', { roomId, settings: rooms[roomId].settings });
-        }
-        socket.emit('invitationAccepted', { roomId, settings: rooms[roomId].settings });
-
-        // 更新玩家列表和状态
-        io.to(roomId).emit('updatePlayerList', {
-            players: rooms[roomId].players,
-            roomOwner: rooms[roomId].roomOwner,
-        });
-        io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
-    });
-
-    // 聊天功能
-    socket.on('sendMessage', (roomId, message) => {
-        if (rooms[roomId]) {
-            io.to(roomId).emit('receiveMessage', {
-                player: playerName,
-                message: message,
-            });
-        }
-    });
-
-    // 断开连接
-    socket.on('disconnect', () => {
-        onlineUsers--;
-        io.emit('updateOnlineUsers', onlineUsers);
-        console.log(`用户断开连接：${socket.id}，当前在线用户：${onlineUsers}`);
-
-        // 从在线用户列表中删除
-        delete onlineUserList[socket.id];
-        io.emit('updateOnlineUserList', onlineUserList);
-
-        for (const roomId in rooms) {
-            if (rooms[roomId].players[socket.id]) {
-                const playerName = rooms[roomId].players[socket.id];
-                delete rooms[roomId].players[socket.id];
-                delete rooms[roomId].scores[socket.id];
-                delete rooms[roomId].choices[socket.id];
-                delete rooms[roomId].status[socket.id];
-
-                // 如果离开的是房主，转移房主身份
-                if (rooms[roomId].roomOwner === socket.id) {
-                    const remainingPlayers = Object.keys(rooms[roomId].players);
-                    if (remainingPlayers.length > 0) {
-                        rooms[roomId].roomOwner = remainingPlayers[0];
-                    } else {
-                        // 房间没人了，删除房间
-                        delete rooms[roomId];
-                        delete roomList[roomId];
-                        const index = availableRooms.indexOf(roomId);
-                        if (index !== -1) {
-                            availableRooms.splice(index, 1);
-                        }
-                    }
-                }
-
-                // 更新房间列表
-                if (rooms[roomId]) {
-                    roomList[roomId].players = rooms[roomId].players;
-                    roomList[roomId].roomOwner = rooms[roomId].roomOwner;
-                } else {
-                    delete roomList[roomId];
-                }
-                io.emit('updateRoomList', roomList);
-
-                io.to(roomId).emit('playerLeft', playerName);
-                io.to(roomId).emit('updatePlayerList', {
-                    players: rooms[roomId]?.players || {},
-                    roomOwner: rooms[roomId]?.roomOwner || null,
+// 处理 UNO 游戏的事件
+function handleUnoGameEvents(socket) {
+    socket.on('playCard', (roomId, card) => {
+        if (rooms[roomId] && rooms[roomId].gameType === 'uno') {
+            const game = rooms[roomId].unoGame;
+            const playerId = socket.id;
+            const result = unoGameLogic.playCard(game, playerId, card);
+            if (result.success) {
+                // 广播给所有玩家
+                io.to(roomId).emit('unoCardPlayed', {
+                    playerId,
+                    card,
+                    gameState: unoGameLogic.getGameState(game),
                 });
-                io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
+
+                // 检查是否有赢家
+                if (unoGameLogic.checkWinner(game, playerId)) {
+                    io.to(roomId).emit('unoGameEnded', {
+                        winner: rooms[roomId].players[playerId],
+                    });
+                    updateLeaderboard(rooms[roomId].players[playerId]);
+                }
+            } else {
+                socket.emit('errorMessage', result.message);
             }
         }
     });
-});
+
+    socket.on('drawCard', (roomId) => {
+        if (rooms[roomId] && rooms[roomId].gameType === 'uno') {
+            const game = rooms[roomId].unoGame;
+            const playerId = socket.id;
+            const card = unoGameLogic.drawCard(game, playerId);
+            if (card) {
+                socket.emit('unoCardDrawn', { card });
+                io.to(roomId).emit('unoGameStateUpdated', {
+                    gameState: unoGameLogic.getGameState(game),
+                });
+            } else {
+                socket.emit('errorMessage', '无法抽牌');
+            }
+        }
+    });
+
+    // 重新开始 UNO 游戏
+    socket.on('restartUnoGame', (roomId) => {
+        if (rooms[roomId] && rooms[roomId].gameType === 'uno') {
+            if (rooms[roomId].roomOwner !== socket.id) {
+                socket.emit('errorMessage', '只有房主才能重新开始游戏');
+                return;
+            }
+
+            rooms[roomId].unoGame = unoGameLogic.createGame();
+            unoGameLogic.initializeGame(rooms[roomId].unoGame, rooms[roomId].players);
+            const game = rooms[roomId].unoGame;
+            // 发送初始游戏状态
+            const gameState = unoGameLogic.getGameState(game);
+            io.to(roomId).emit('unoGameRestarted', {
+                gameState,
+            });
+        }
+    });
+}
 
 // 生成随机房间 ID（6位数字）
 function generateRoomId() {
@@ -518,12 +579,16 @@ function generateRoomId() {
 }
 
 // 默认游戏设置
-function defaultGameSettings() {
-    return {
-        victoryCondition: 'score',
-        targetScore: 5,
-        totalRounds: 5,
-    };
+function defaultGameSettings(gameType) {
+    if (gameType === 'rps') {
+        return {
+            victoryCondition: 'score',
+            targetScore: 5,
+            totalRounds: 5,
+        };
+    } else if (gameType === 'uno') {
+        return {}; // UNO 游戏的默认设置
+    }
 }
 
 // 更新排行榜

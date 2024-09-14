@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8" />
+    <title>UNO 游戏</title>
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+<h1>UNO 游戏</h1>
+<!-- UNO 游戏的内容 -->
+<div id="onlineUsers">在线玩家：0</div>
+<div>
+    <button id="createRoom">创建房间</button>
+    <input type="text" id="roomIdInput" placeholder="输入房间 ID" />
+    <button id="joinRoom">加入房间</button>
+    <button id="quickMatch">快速匹配</button>
+</div>
+<div id="roomId"></div>
+<div id="playerCount"></div>
+<div id="playerList">
+    <h3>玩家列表：</h3>
+    <ul id="players"></ul>
+</div>
+<div id="startGameContainer" style="display: none;">
+    <button id="startGame">开始游戏</button>
+</div>
+<div id="gameArea" style="display: none;">
+    <!-- UNO 游戏界面 -->
+    <div id="gameStatus"></div>
+    <div id="topCardArea">
+        <h3>弃牌堆顶牌：</h3>
+        <div id="topCard"></div>
+    </div>
+    <div id="handCardsArea">
+        <h3>你的手牌：</h3>
+        <div id="handCards"></div>
+    </div>
+    <button id="drawCard">抽牌</button>
+</div>
+<button id="leaveRoom" style="display: none;">退出游戏</button>
+<button id="restartGame" style="display: none;">重新开始</button>
+<div id="chat">
+    <h3>聊天</h3>
+    <div id="messages"></div>
+    <input type="text" id="chatInput" placeholder="输入消息" />
+    <button id="sendChat">发送</button>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="client.js"></script>
+</body>
+</html>

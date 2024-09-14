@@ -1,0 +1,60 @@
+/* public/uno/styles.css */
+
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  margin-top: 20px;
+}
+
+#gameArea {
+  margin-top: 20px;
+}
+
+#handCards {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.card {
+  width: 60px;
+  height: 90px;
+  margin: 5px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#gameStatus {
+  margin-bottom: 20px;
+}
+
+#chat {
+  margin-top: 20px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+  text-align: left;
+}
+
+#messages {
+  border: 1px solid #ccc;
+  height: 150px;
+  overflow-y: scroll;
+  padding: 5px;
+}
+
+#chatInput {
+  width: 80%;
+  padding: 5px;
+}
+
+#sendChat {
+  padding: 5px 10px;
+}
+
+/* 其他样式 */
