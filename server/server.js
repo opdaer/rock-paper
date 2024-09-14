@@ -88,6 +88,7 @@ io.on('connection', (socket) => {
             status: {},
             settings: settings,
             round: 1,
+            roomOwner: socket.id, // 设置房主
         };
         socket.join(roomId);
         rooms[roomId].players[socket.id] = playerName;
@@ -100,11 +101,15 @@ io.on('connection', (socket) => {
             id: roomId,
             players: rooms[roomId].players,
             settings: settings,
+            roomOwner: rooms[roomId].roomOwner, // 添加房主信息
         };
         io.emit('updateRoomList', roomList);
 
         callback(roomId);
-        io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+        io.to(roomId).emit('updatePlayerList', {
+            players: rooms[roomId].players,
+            roomOwner: rooms[roomId].roomOwner,
+        });
         io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
     });
 
@@ -114,14 +119,16 @@ io.on('connection', (socket) => {
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
             rooms[roomId].scores[socket.id] = 0;
-            callback(true, rooms[roomId].settings);
 
             // 更新房间列表
             roomList[roomId].players = rooms[roomId].players;
             io.emit('updateRoomList', roomList);
 
-            // 向房间内所有玩家广播更新后的玩家列表和状态
-            io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+            callback(true, rooms[roomId].settings);
+            io.to(roomId).emit('updatePlayerList', {
+                players: rooms[roomId].players,
+                roomOwner: rooms[roomId].roomOwner,
+            });
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         } else {
             callback(false);
@@ -150,7 +157,10 @@ io.on('connection', (socket) => {
             io.emit('updateRoomList', roomList);
 
             callback(roomId, rooms[roomId].settings);
-            io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+            io.to(roomId).emit('updatePlayerList', {
+                players: rooms[roomId].players,
+                roomOwner: rooms[roomId].roomOwner,
+            });
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         } else {
             const settings = defaultGameSettings();
@@ -162,6 +172,7 @@ io.on('connection', (socket) => {
                 status: {},
                 settings: settings,
                 round: 1,
+                roomOwner: socket.id, // 设置房主
             };
             socket.join(roomId);
             rooms[roomId].players[socket.id] = playerName;
@@ -174,11 +185,15 @@ io.on('connection', (socket) => {
                 id: roomId,
                 players: rooms[roomId].players,
                 settings: settings,
+                roomOwner: rooms[roomId].roomOwner, // 添加房主信息
             };
             io.emit('updateRoomList', roomList);
 
             callback(roomId, settings);
-            io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+            io.to(roomId).emit('updatePlayerList', {
+                players: rooms[roomId].players,
+                roomOwner: rooms[roomId].roomOwner,
+            });
             io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
         }
     });
@@ -186,6 +201,11 @@ io.on('connection', (socket) => {
     // 开始游戏
     socket.on('startGame', (roomId) => {
         if (rooms[roomId]) {
+            if (rooms[roomId].roomOwner !== socket.id) {
+                socket.emit('errorMessage', '只有房主才能开始游戏');
+                return;
+            }
+
             // 重置玩家状态为“思考中”
             const playerIds = Object.keys(rooms[roomId].players);
             playerIds.forEach((id) => {
@@ -303,33 +323,49 @@ io.on('connection', (socket) => {
             delete rooms[roomId].choices[socket.id];
             delete rooms[roomId].status[socket.id];
 
-            // 更新房间状态
-            io.to(roomId).emit('playerLeft', playerName);
-            io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
-            io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+            // 如果离开的是房主，转移房主身份
+            if (rooms[roomId].roomOwner === socket.id) {
+                const remainingPlayers = Object.keys(rooms[roomId].players);
+                if (remainingPlayers.length > 0) {
+                    rooms[roomId].roomOwner = remainingPlayers[0];
+                } else {
+                    // 房间没人了，删除房间
+                    delete rooms[roomId];
+                    delete roomList[roomId];
+                    const index = availableRooms.indexOf(roomId);
+                    if (index !== -1) {
+                        availableRooms.splice(index, 1);
+                    }
+                }
+            }
 
             // 更新房间列表
-            if (Object.keys(rooms[roomId].players).length === 0) {
-                delete rooms[roomId];
-                delete roomList[roomId];
-                const index = availableRooms.indexOf(roomId);
-                if (index !== -1) {
-                    availableRooms.splice(index, 1);
-                }
-            } else {
-                // 如果房间人数低于4人，重新添加到可用房间列表
-                if (!availableRooms.includes(roomId)) {
-                    availableRooms.push(roomId);
-                }
+            if (rooms[roomId]) {
                 roomList[roomId].players = rooms[roomId].players;
+                roomList[roomId].roomOwner = rooms[roomId].roomOwner;
+            } else {
+                delete roomList[roomId];
             }
             io.emit('updateRoomList', roomList);
+
+            // 更新房间状态
+            io.to(roomId).emit('playerLeft', playerName);
+            io.to(roomId).emit('updatePlayerList', {
+                players: rooms[roomId]?.players || {},
+                roomOwner: rooms[roomId]?.roomOwner || null,
+            });
+            io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
         }
     });
 
     // 重新开始游戏
     socket.on('restartGame', (roomId) => {
         if (rooms[roomId]) {
+            if (rooms[roomId].roomOwner !== socket.id) {
+                socket.emit('errorMessage', '只有房主才能重新开始游戏');
+                return;
+            }
+
             rooms[roomId].choices = {};
             rooms[roomId].scores = {};
             rooms[roomId].status = {};
@@ -363,6 +399,7 @@ io.on('connection', (socket) => {
             status: {},
             settings: defaultGameSettings(),
             round: 1,
+            roomOwner: fromSocketId, // 设置邀请者为房主
         };
         // 两个玩家加入同一个房间
         const fromSocket = io.sockets.sockets.get(fromSocketId);
@@ -380,6 +417,7 @@ io.on('connection', (socket) => {
             id: roomId,
             players: rooms[roomId].players,
             settings: rooms[roomId].settings,
+            roomOwner: rooms[roomId].roomOwner,
         };
         io.emit('updateRoomList', roomList);
 
@@ -390,7 +428,10 @@ io.on('connection', (socket) => {
         socket.emit('invitationAccepted', { roomId, settings: rooms[roomId].settings });
 
         // 更新玩家列表和状态
-        io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
+        io.to(roomId).emit('updatePlayerList', {
+            players: rooms[roomId].players,
+            roomOwner: rooms[roomId].roomOwner,
+        });
         io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
     });
 
@@ -421,27 +462,38 @@ io.on('connection', (socket) => {
                 delete rooms[roomId].scores[socket.id];
                 delete rooms[roomId].choices[socket.id];
                 delete rooms[roomId].status[socket.id];
-                io.to(roomId).emit('playerLeft', playerName);
-                // 更新玩家列表和状态
-                io.to(roomId).emit('updatePlayerList', rooms[roomId].players);
-                io.to(roomId).emit('updatePlayerStatus', rooms[roomId].status);
+
+                // 如果离开的是房主，转移房主身份
+                if (rooms[roomId].roomOwner === socket.id) {
+                    const remainingPlayers = Object.keys(rooms[roomId].players);
+                    if (remainingPlayers.length > 0) {
+                        rooms[roomId].roomOwner = remainingPlayers[0];
+                    } else {
+                        // 房间没人了，删除房间
+                        delete rooms[roomId];
+                        delete roomList[roomId];
+                        const index = availableRooms.indexOf(roomId);
+                        if (index !== -1) {
+                            availableRooms.splice(index, 1);
+                        }
+                    }
+                }
 
                 // 更新房间列表
-                if (Object.keys(rooms[roomId].players).length === 0) {
-                    delete rooms[roomId];
-                    delete roomList[roomId];
-                    const index = availableRooms.indexOf(roomId);
-                    if (index !== -1) {
-                        availableRooms.splice(index, 1);
-                    }
-                } else {
-                    // 如果房间人数低于4人，重新添加到可用房间列表
-                    if (!availableRooms.includes(roomId)) {
-                        availableRooms.push(roomId);
-                    }
+                if (rooms[roomId]) {
                     roomList[roomId].players = rooms[roomId].players;
+                    roomList[roomId].roomOwner = rooms[roomId].roomOwner;
+                } else {
+                    delete roomList[roomId];
                 }
                 io.emit('updateRoomList', roomList);
+
+                io.to(roomId).emit('playerLeft', playerName);
+                io.to(roomId).emit('updatePlayerList', {
+                    players: rooms[roomId]?.players || {},
+                    roomOwner: rooms[roomId]?.roomOwner || null,
+                });
+                io.to(roomId).emit('updatePlayerStatus', rooms[roomId]?.status || {});
             }
         }
     });

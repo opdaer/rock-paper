@@ -7,6 +7,7 @@ let hasMadeChoice = false;
 
 // 存储玩家列表
 let players = {};
+let currentRoomOwner = null;
 
 // 设置玩家昵称
 let playerName = prompt('请输入你的昵称：');
@@ -50,7 +51,9 @@ socket.on('updateRoomList', (roomList) => {
     roomListUl.innerHTML = '';
     for (const roomId in roomList) {
         const li = document.createElement('li');
-        li.textContent = `房间 ${roomId} - 玩家人数：${Object.keys(roomList[roomId].players).length}`;
+        const room = roomList[roomId];
+        const ownerName = room.players[room.roomOwner];
+        li.textContent = `房间 ${roomId} - 房主：${ownerName} - 玩家人数：${Object.keys(room.players).length}`;
         li.dataset.roomId = roomId;
         li.addEventListener('click', () => {
             joinRoomById(roomId);
@@ -128,11 +131,16 @@ document.getElementById('confirmSettings').addEventListener('click', () => {
         roomId = id;
         document.getElementById('roomId').innerText = `房间 ID: ${roomId}`;
         alert(`房间已创建，房间 ID: ${roomId}`);
+        applyGameSettings(settings);
         document.getElementById('gameSettings').style.display = 'none';
         document.getElementById('choices').style.display = 'none'; // 等待游戏开始后再显示
         document.getElementById('playerActions').style.display = 'none';
-        document.getElementById('startGameContainer').style.display = 'block'; // 显示“开始游戏”按钮
         document.getElementById('leaveRoom').style.display = 'block'; // 显示“退出游戏”按钮
+
+        // 显示“开始游戏”按钮
+        if (currentRoomOwner === socket.id) {
+            document.getElementById('startGameContainer').style.display = 'block';
+        }
     });
 });
 
@@ -211,6 +219,7 @@ function resetClientState() {
     roomId = null;
     players = {};
     hasMadeChoice = false;
+    currentRoomOwner = null;
     document.getElementById('roomId').innerText = '';
     document.getElementById('playerCount').innerText = '';
     document.getElementById('status').innerText = '';
@@ -230,10 +239,18 @@ function enableRoomButtons() {
 
 // 更新玩家列表
 socket.on('updatePlayerList', (data) => {
-    players = data;
-    console.log('更新的玩家列表：', data);
+    players = data.players;
+    currentRoomOwner = data.roomOwner;
+    console.log('更新的玩家列表：', players);
     updatePlayerStatusDisplay(); // 更新玩家列表显示
     document.getElementById('playerCount').innerText = `玩家人数：${Object.keys(players).length}`;
+
+    // 根据房主身份显示或隐藏“开始游戏”按钮
+    if (roomId && currentRoomOwner === socket.id) {
+        document.getElementById('startGameContainer').style.display = 'block';
+    } else {
+        document.getElementById('startGameContainer').style.display = 'none';
+    }
 });
 
 // 更新玩家状态
@@ -246,8 +263,9 @@ function updatePlayerStatusDisplay(status = {}) {
     playersUl.innerHTML = ''; // 清空列表
     for (const [id, name] of Object.entries(players)) {
         const playerStatus = status[id] || '思考中';
+        const isOwner = id === currentRoomOwner;
         const li = document.createElement('li');
-        li.textContent = `${name} - ${playerStatus}`;
+        li.textContent = `${name}${isOwner ? ' (房主)' : ''} - ${playerStatus}`;
         playersUl.appendChild(li);
     }
 }
@@ -305,8 +323,10 @@ socket.on('gameEnded', (data) => {
         .then((data) => {
             updateLeaderboard(data);
         });
-    // 显示“重新开始”按钮
-    document.getElementById('restartGame').style.display = 'block';
+    // 显示“重新开始”按钮（如果是房主）
+    if (currentRoomOwner === socket.id) {
+        document.getElementById('restartGame').style.display = 'block';
+    }
 });
 
 // 游戏重新开始
@@ -318,6 +338,11 @@ socket.on('gameRestarted', (settings) => {
     document.getElementById('choices').style.display = 'block';
     document.getElementById('currentRound').style.display = 'block';
     document.getElementById('restartGame').style.display = 'none';
+});
+
+// 错误信息
+socket.on('errorMessage', (msg) => {
+    alert(msg);
 });
 
 // 玩家加入
