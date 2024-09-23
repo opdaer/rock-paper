@@ -441,6 +441,36 @@ function handleUnoGameEvents(socket) {
     });
 }
 
+// 获取在线用户列表
+app.get('/api/online-users', (req, res) => {
+    const onlineUsersArray = Object.values(onlineUserList).map((name) => ({
+        name,
+        avatar: null, // 没有头像，设置为 null 或默认图片路径
+        status: 'online',
+    }));
+    res.json(onlineUsersArray);
+});
+
+// 设置静态文件目录
+app.use(express.static(path.join(__dirname, '../public')));
+
+// 处理所有其他路由，返回 index.html
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// 获取可用房间列表
+app.get('/api/rooms', (req, res) => {
+    const roomsArray = Object.values(roomList).map((room) => ({
+        id: room.id,
+        gameType: room.gameType,
+        players: room.players,
+        maxPlayers: room.gameType === 'rps' ? 4 : 8, // 示例最大玩家数
+    }));
+    res.json(roomsArray);
+});
+
+
 // 生成随机房间 ID（6位数字）
 function generateRoomId() {
     let roomId;

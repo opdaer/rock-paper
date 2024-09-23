@@ -1,29 +1,16 @@
+<!-- public/index.html -->
+
 <!DOCTYPE html>
 <html lang="zh">
 <head>
-    <meta charset="UTF-8" />
+    <meta charset="UTF-8">
     <title>多游戏在线平台</title>
-    <link rel="stylesheet" href="styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- 引入您的 CSS 样式表 -->
+    <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
-<h1>多游戏在线平台</h1>
-<div id="onlineUsers">在线玩家：0</div>
-<button id="changeNameButton">修改昵称</button>
-<h2>请选择游戏：</h2>
-<ul id="gameList">
-    <li><a href="/rps/index.html">石头剪刀布</a></li>
-    <li><a href="/uno/index.html">UNO</a></li>
-</ul>
-<div id="leaderboardSection">
-    <h3>排行榜</h3>
-    <ul id="leaderboard"></ul>
-</div>
-<div id="onlineUserSection">
-    <h3>在线用户：</h3>
-    <ul id="onlineUsersList"></ul>
-</div>
-<script src="/socket.io/socket.io.js"></script>
-<script src="index.js"></script>
+<div id="root"></div>
+<!-- 引入编译后的 React bundle -->
+<script src="/bundle.js"></script>
 </body>
 </html>
